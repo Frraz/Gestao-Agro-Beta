@@ -5,7 +5,7 @@ from src.models.auditoria import Auditoria
 from flask_login import login_required
 from src.models.fazenda import Fazenda
 from src.models.pessoa import Pessoa
-from src import db  # Certifique-se de importar db do seu projeto
+from src.models.db import db
 import json
 
 auditoria_bp = Blueprint('auditoria', __name__)
