@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🌾 Sistema de Gestão Agrícola
 
 ![Interface do Sistema](docs/img/Tela%20principal.png)  
@@ -11,19 +12,36 @@
 ## 🔥 Veja online
 
 ➡️ [Acesse a demonstração](https://gestao-agro-production.up.railway.app/)
+=======
+# 🌾 Gestão Agro Beta
+
+Sistema completo de gestão para fazendas, pessoas, documentos e endividamentos, focado em produtividade, automação e controle centralizado.
+
+![screenshot](docs/img/Tela%20principal.png) <!-- Adicione um screenshot real aqui -->
+[![Deploy Railway](https://img.shields.io/badge/Railway-Deploy-brightgreen?logo=railway)](https://gestao-agro-production.up.railway.app/)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+>>>>>>> 9485720cc6dcd455f0d6b6ae04476cdb873001b8
 
 ---
 
-## ✨ Por que usar o Gestao-Agro?
+## ✨ **Funcionalidades Principais**
 
-- **Automatize notificações de vencimentos** (até 7 alertas por e-mail)
-- Controle total de pessoas, fazendas, documentos e endividamentos
-- **Dashboard visual, responsivo e moderno**
-- Segurança, performance e facilidade de uso
-- Código aberto e fácil de customizar
+- **🏞️ Gestão de Fazendas/Áreas**  
+  Matrícula, tamanho, posse, localização e controle do CAR.
+- **📄 Documentação**  
+  Certidões, contratos, vencimentos, alertas e notificações por e-mail.
+- **💰 Endividamentos**  
+  Gestão de empréstimos, garantias, parcelas e histórico.
+- **👥 Pessoas**  
+  Cadastro completo, associação com fazendas e documentos.
+- **📊 Dashboard**  
+  Visualização gráfica de métricas, vencimentos e alertas.
+- **🔔 Notificações Inteligentes**  
+  Alertas automáticos de vencimento e acompanhamento.
 
 ---
 
+<<<<<<< HEAD
 ## 📋 Principais Funcionalidades
 
 | Pessoa/Fazenda                         | Documentos                       | Endividamentos                   | Notificações         | Visual            |
@@ -48,6 +66,18 @@
 ---
 
 ## 🚀 Instalação Rápida
+=======
+## 🚀 **Começando**
+
+### **Pré-requisitos**
+
+- Python 3.8+
+- MySQL 5.7+ ou SQLite (default/dev)
+- Redis (opcional, para cache)
+- Servidor SMTP para notificações por e-mail
+
+### **Instalação**
+>>>>>>> 9485720cc6dcd455f0d6b6ae04476cdb873001b8
 
 ```bash
 git clone https://github.com/Frraz/Gestao-Agro-Beta.git
@@ -57,9 +87,20 @@ source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 pip install -r requirements.txt
 cp .env.example .env      # Edite o arquivo com suas configurações
+```
+
+### **Configuração**
+
+- Edite o arquivo `.env` com os dados do seu banco, e-mail, etc.
+- Para MySQL, crie o banco e ajuste as variáveis de conexão conforme seu ambiente.
+
+### **Rodando o sistema**
+
+```bash
 python src/main.py
 ```
 
+<<<<<<< HEAD
 Acesse a [documentação completa em `/docs`](docs/README.md)
 
 ---
@@ -73,21 +114,48 @@ Acesse a [documentação completa em `/docs`](docs/README.md)
 ---
 
 ## 🧪 Testes
+=======
+Acesse [http://localhost:5000](http://localhost:5000) no navegador.
+
+---
+
+## 🧪 **Testes**
+>>>>>>> 9485720cc6dcd455f0d6b6ae04476cdb873001b8
 
 ```bash
 chmod +x run_tests.sh
 ./run_tests.sh
 ```
 
-### Testar com MySQL
+---
 
-```bash
-chmod +x test_mysql.sh
-./test_mysql.sh
+## ☁️ **Deploy no Railway**
+
+1. [Deploy on Railway](https://railway.app/new)
+2. Configure as variáveis de ambiente (.env)
+3. O sistema faz deploy automático!
+
+---
+
+## 📂 **Estrutura do Projeto**
+
+```
+src/
+  models/        # Models do SQLAlchemy
+  routes/        # Rotas Flask (Blueprints)
+  templates/     # Templates Jinja2/HTML
+  static/        # CSS, JS, imagens
+  utils/         # Helpers e utilitários
+  main.py        # App factory e inicialização
+migrations/      # Alembic (migrations do banco)
+requirements.txt
+.env.example
+README.md
 ```
 
 ---
 
+<<<<<<< HEAD
 ## 🐳 Deploy Local com Docker
 
 ```bash
@@ -216,3 +284,22 @@ Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICE
 **Desenvolvido com ❤️ para a gestão agrícola moderna**
 
 *Sistema de Gestão Agrícola - Transformando a gestão rural com tecnologia*
+=======
+## 🎯 **Contribuindo**
+
+1. Faça um fork do repositório
+2. Crie uma branch para sua feature (`git checkout -b minha-feature`)
+3. Commit suas mudanças (`git commit -am 'feat: Minha nova feature'`)
+4. Envie um Pull Request!
+
+---
+
+## 📝 **Licença**
+
+MIT. Sinta-se livre para usar, contribuir e sugerir melhorias!
+
+---
+
+**Dúvidas? Sugestões?**  
+Abra uma issue ou fale comigo em [github.com/Frraz](https://github.com/Frraz)
+>>>>>>> 9485720cc6dcd455f0d6b6ae04476cdb873001b8
