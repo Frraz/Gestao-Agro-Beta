@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from src.models.db import db
-from src.utils.audit import log_audit
 
 class AuditLog(db.Model):
     __tablename__ = 'audit_log'
@@ -17,14 +16,3 @@ class AuditLog(db.Model):
 
     def __repr__(self):
         return f'<AuditLog {self.action} by {self.username} at {self.created_at}>'
-    
-
-
-# Após login bem-sucedido:
-log_audit("login", f"Usuário {usuario.email} logou com sucesso.")
-
-# Após cadastro de fazenda:
-log_audit("criar_fazenda", f"Fazenda cadastrada: {fazenda.nome} (ID: {fazenda.id})")
-
-# Após exclusão:
-log_audit("excluir_endividamento", f"Endividamento removido: {endividamento.id}")

@@ -1,3 +1,5 @@
+#/src/routes/admin.py
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from src.models.db import db
 from src.models.documento import Documento, TipoDocumento, TipoEntidade
@@ -7,6 +9,7 @@ import os
 import datetime
 from src.utils.email_service import verificar_documentos_vencendo, EmailService
 from flask_login import login_required
+from src.utils.auditoria import registrar_auditoria 
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -78,10 +81,15 @@ def nova_pessoa():
         
         db.session.add(nova_pessoa)
         db.session.commit()
-        
+        # LOG DE AUDITORIA
+        registrar_auditoria(
+            acao="criação",
+            entidade="Pessoa",
+            valor_anterior=None,
+            valor_novo={"id": nova_pessoa.id, "nome": nova_pessoa.nome, "cpf_cnpj": nova_pessoa.cpf_cnpj}
+        )
         flash(f'Pessoa {nome} cadastrada com sucesso!', 'success')
         return redirect(url_for('admin.listar_pessoas'))
-    
     return render_template('admin/pessoas/form.html')
 
 @admin_bp.route('/pessoas/<int:id>/editar', methods=['GET', 'POST'])
@@ -108,6 +116,16 @@ def editar_pessoa(id):
             flash(f'Já existe outra pessoa cadastrada com o CPF/CNPJ {cpf_cnpj}.', 'danger')
             return render_template('admin/pessoas/form.html', pessoa=pessoa)
         
+        # Captura os dados antigos ANTES de atualizar
+        valor_anterior = {
+            "id": pessoa.id,
+            "nome": pessoa.nome,
+            "cpf_cnpj": pessoa.cpf_cnpj,
+            "email": pessoa.email,
+            "telefone": pessoa.telefone,
+            "endereco": pessoa.endereco
+        }
+        
         # Atualizar pessoa
         pessoa.nome = nome
         pessoa.cpf_cnpj = cpf_cnpj
@@ -117,9 +135,22 @@ def editar_pessoa(id):
         
         db.session.commit()
         
+        # LOG DE AUDITORIA
+        registrar_auditoria(
+            acao="edição",
+            entidade="Pessoa",
+            valor_anterior=valor_anterior,
+            valor_novo={
+                "id": pessoa.id,
+                "nome": pessoa.nome,
+                "cpf_cnpj": pessoa.cpf_cnpj,
+                "email": pessoa.email,
+                "telefone": pessoa.telefone,
+                "endereco": pessoa.endereco
+            }
+        )
         flash(f'Pessoa {nome} atualizada com sucesso!', 'success')
         return redirect(url_for('admin.listar_pessoas'))
-    
     return render_template('admin/pessoas/form.html', pessoa=pessoa)
 
 @admin_bp.route('/pessoas/<int:id>/excluir', methods=['POST'])
@@ -139,11 +170,27 @@ def excluir_pessoa(id):
         return redirect(url_for('admin.listar_pessoas'))
     
     nome = pessoa.nome
+    # Capture o estado ANTES de deletar
+    valor_anterior = {
+        "id": pessoa.id,
+        "nome": pessoa.nome,
+        "cpf_cnpj": pessoa.cpf_cnpj,
+        "email": pessoa.email,
+        "telefone": pessoa.telefone,
+        "endereco": pessoa.endereco
+    }
     db.session.delete(pessoa)
     db.session.commit()
-    
+    # LOG DE AUDITORIA
+    registrar_auditoria(
+        acao="exclusão",
+        entidade="Pessoa",
+        valor_anterior=valor_anterior,
+        valor_novo=None
+    )
     flash(f'Pessoa {nome} excluída com sucesso!', 'success')
     return redirect(url_for('admin.listar_pessoas'))
+
 
 @admin_bp.route('/pessoas/<int:id>/fazendas')
 @login_required
@@ -178,6 +225,17 @@ def associar_fazenda_pessoa(pessoa_id):
         
         # Associar fazenda à pessoa
         pessoa.fazendas.append(fazenda)
+        registrar_auditoria(
+            acao="associação_fazenda",
+            entidade="Pessoa-Fazenda",
+            valor_anterior=None,
+            valor_novo={
+                "pessoa_id": pessoa.id,
+                "pessoa_nome": pessoa.nome,
+                "fazenda_id": fazenda.id,
+                "fazenda_nome": fazenda.nome
+            }
+        )
         db.session.commit()
         
         flash(f'Fazenda {fazenda.nome} associada com sucesso à pessoa {pessoa.nome}!', 'success')
@@ -197,6 +255,17 @@ def desassociar_fazenda_pessoa(pessoa_id, fazenda_id):
         return redirect(url_for('admin.listar_fazendas_pessoa', id=pessoa.id))
     
     pessoa.fazendas.remove(fazenda)
+    registrar_auditoria(
+        acao="desassociação_fazenda",
+        entidade="Pessoa-Fazenda",
+        valor_anterior={
+            "pessoa_id": pessoa.id,
+            "pessoa_nome": pessoa.nome,
+            "fazenda_id": fazenda.id,
+            "fazenda_nome": fazenda.nome
+        },
+        valor_novo=None
+    )
     db.session.commit()
     
     flash(f'Fazenda {fazenda.nome} desassociada com sucesso da pessoa {pessoa.nome}!', 'success')
@@ -266,11 +335,18 @@ def nova_fazenda():
         
         db.session.add(nova_fazenda)
         db.session.commit()
-        
+
+        # LOG DE AUDITORIA
+        registrar_auditoria(
+            acao="criação",
+            entidade="Fazenda",
+            valor_anterior=None,
+            valor_novo={"id": nova_fazenda.id, "nome": nova_fazenda.nome, "matricula": nova_fazenda.matricula}
+        )
         flash(f'Fazenda {nome} cadastrada com sucesso!', 'success')
         return redirect(url_for('admin.listar_fazendas'))
-    
     return render_template('admin/fazendas/form.html', tipos_posse=TipoPosse)
+
 
 @admin_bp.route('/fazendas/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
@@ -312,6 +388,20 @@ def editar_fazenda(id):
             flash('A área consolidada não pode ser maior que o tamanho total.', 'danger')
             return render_template('admin/fazendas/form.html', fazenda=fazenda, tipos_posse=TipoPosse)
         
+        # Captura os dados antigos antes de modificar
+        valor_anterior = {
+            "id": fazenda.id,
+            "nome": fazenda.nome,
+            "matricula": fazenda.matricula,
+            "tamanho_total": fazenda.tamanho_total,
+            "area_consolidada": fazenda.area_consolidada,
+            "tamanho_disponivel": fazenda.tamanho_disponivel,
+            "tipo_posse": fazenda.tipo_posse.value if fazenda.tipo_posse else None,
+            "municipio": fazenda.municipio,
+            "estado": fazenda.estado,
+            "recibo_car": fazenda.recibo_car,
+        }
+        
         # Calcular tamanho disponível
         tamanho_disponivel = tamanho_total - area_consolidada
         
@@ -328,10 +418,28 @@ def editar_fazenda(id):
         
         db.session.commit()
         
+        # LOG DE AUDITORIA
+        registrar_auditoria(
+            acao="edição",
+            entidade="Fazenda",
+            valor_anterior=valor_anterior,
+            valor_novo={
+                "id": fazenda.id,
+                "nome": fazenda.nome,
+                "matricula": fazenda.matricula,
+                "tamanho_total": fazenda.tamanho_total,
+                "area_consolidada": fazenda.area_consolidada,
+                "tamanho_disponivel": fazenda.tamanho_disponivel,
+                "tipo_posse": fazenda.tipo_posse.value if fazenda.tipo_posse else None,
+                "municipio": fazenda.municipio,
+                "estado": fazenda.estado,
+                "recibo_car": fazenda.recibo_car,
+            }
+        )
         flash(f'Fazenda {nome} atualizada com sucesso!', 'success')
         return redirect(url_for('admin.listar_fazendas'))
-    
     return render_template('admin/fazendas/form.html', fazenda=fazenda, tipos_posse=TipoPosse)
+
 
 @admin_bp.route('/fazendas/<int:id>/excluir', methods=['POST'])
 @login_required
@@ -349,11 +457,32 @@ def excluir_fazenda(id):
         pessoa.fazendas.remove(fazenda)
     
     nome = fazenda.nome
+    # Capture o estado anterior antes do delete
+    valor_anterior = {
+        "id": fazenda.id,
+        "nome": fazenda.nome,
+        "matricula": fazenda.matricula,
+        "tamanho_total": fazenda.tamanho_total,
+        "area_consolidada": fazenda.area_consolidada,
+        "tamanho_disponivel": fazenda.tamanho_disponivel,
+        "tipo_posse": fazenda.tipo_posse.value if fazenda.tipo_posse else None,
+        "municipio": fazenda.municipio,
+        "estado": fazenda.estado,
+        "recibo_car": fazenda.recibo_car,
+    }
     db.session.delete(fazenda)
     db.session.commit()
     
+    # LOG DE AUDITORIA
+    registrar_auditoria(
+        acao="exclusão",
+        entidade="Fazenda",
+        valor_anterior=valor_anterior,
+        valor_novo=None
+    )
     flash(f'Fazenda {nome} excluída com sucesso!', 'success')
     return redirect(url_for('admin.listar_fazendas'))
+
 
 @admin_bp.route('/fazendas/<int:id>/documentos')
 @login_required
@@ -461,6 +590,25 @@ def novo_documento():
         db.session.add(novo_documento)
         db.session.commit()
         
+        # LOG DE AUDITORIA -- SUGERIDO: registre todos os campos relevantes
+        registrar_auditoria(
+            acao="criação",
+            entidade="Documento",
+            valor_anterior=None,
+            valor_novo={
+                "id": novo_documento.id,
+                "nome": novo_documento.nome,
+                "tipo": novo_documento.tipo.value,
+                "tipo_personalizado": novo_documento.tipo_personalizado,
+                "data_emissao": str(novo_documento.data_emissao),
+                "data_vencimento": str(novo_documento.data_vencimento) if novo_documento.data_vencimento else None,
+                "tipo_entidade": novo_documento.tipo_entidade.value,
+                "fazenda_id": novo_documento.fazenda_id,
+                "pessoa_id": novo_documento.pessoa_id,
+                "emails_notificacao": novo_documento.emails_notificacao,
+                "prazos_notificacao": novo_documento.prazos_notificacao
+            }
+        )
         flash(f'Documento {nome} cadastrado com sucesso!', 'success')
         return redirect(url_for('admin.listar_documentos'))
     
@@ -544,6 +692,21 @@ def editar_documento(id):
                                   fazendas=fazendas,
                                   pessoas=pessoas)
         
+        # CAPTURE O ESTADO ANTERIOR ANTES DE ALTERAR
+        valor_anterior = {
+            "id": documento.id,
+            "nome": documento.nome,
+            "tipo": documento.tipo.value if documento.tipo else None,
+            "tipo_personalizado": documento.tipo_personalizado,
+            "data_emissao": str(documento.data_emissao),
+            "data_vencimento": str(documento.data_vencimento) if documento.data_vencimento else None,
+            "tipo_entidade": documento.tipo_entidade.value if documento.tipo_entidade else None,
+            "fazenda_id": documento.fazenda_id,
+            "pessoa_id": documento.pessoa_id,
+            "emails_notificacao": documento.emails_notificacao,
+            "prazos_notificacao": documento.prazos_notificacao
+        }
+        
         # Atualizar documento
         documento.nome = nome
         documento.tipo = TipoDocumento(tipo)
@@ -567,7 +730,26 @@ def editar_documento(id):
         documento.prazos_notificacao = prazos_notificacao
         
         db.session.commit()
-        
+    
+        # LOG DE AUDITORIA
+        registrar_auditoria(
+            acao="edição",
+            entidade="Documento",
+            valor_anterior=valor_anterior,
+            valor_novo={
+                "id": documento.id,
+                "nome": documento.nome,
+                "tipo": documento.tipo.value if documento.tipo else None,
+                "tipo_personalizado": documento.tipo_personalizado,
+                "data_emissao": str(documento.data_emissao),
+                "data_vencimento": str(documento.data_vencimento) if documento.data_vencimento else None,
+                "tipo_entidade": documento.tipo_entidade.value if documento.tipo_entidade else None,
+                "fazenda_id": documento.fazenda_id,
+                "pessoa_id": documento.pessoa_id,
+                "emails_notificacao": documento.emails_notificacao,
+                "prazos_notificacao": documento.prazos_notificacao
+            }
+        )
         flash(f'Documento {nome} atualizado com sucesso!', 'success')
         return redirect(url_for('admin.listar_documentos'))
     
@@ -584,9 +766,29 @@ def excluir_documento(id):
     documento = Documento.query.get_or_404(id)
     
     nome = documento.nome
+    # Capture o estado anterior antes de deletar
+    valor_anterior = {
+        "id": documento.id,
+        "nome": documento.nome,
+        "tipo": documento.tipo.value if documento.tipo else None,
+        "tipo_personalizado": documento.tipo_personalizado,
+        "data_emissao": str(documento.data_emissao),
+        "data_vencimento": str(documento.data_vencimento) if documento.data_vencimento else None,
+        "tipo_entidade": documento.tipo_entidade.value if documento.tipo_entidade else None,
+        "fazenda_id": documento.fazenda_id,
+        "pessoa_id": documento.pessoa_id,
+        "emails_notificacao": documento.emails_notificacao,
+        "prazos_notificacao": documento.prazos_notificacao
+    }
     db.session.delete(documento)
     db.session.commit()
-    
+    # LOG DE AUDITORIA
+    registrar_auditoria(
+        acao="exclusão",
+        entidade="Documento",
+        valor_anterior=valor_anterior,
+        valor_novo=None
+    )
     flash(f'Documento {nome} excluído com sucesso!', 'success')
     return redirect(url_for('admin.listar_documentos'))
 

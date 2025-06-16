@@ -1,0 +1,29 @@
+{% extends "layouts/base.html" %}
+{% block title %}Painel de Auditoria{% endblock %}
+{% block content %}
+<h2>Painel de Auditoria</h2>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Data/Hora</th>
+      <th>Usuário</th>
+      <th>Ação</th>
+      <th>Entidade</th>
+      <th>Valor Anterior</th>
+      <th>Valor Novo</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for log in logs %}
+    <tr>
+      <td>{{ log.data_hora.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+      <td>{{ log.usuario.nome if log.usuario else '---' }}</td>
+      <td>{{ log.acao }}</td>
+      <td>{{ log.entidade }}</td>
+      <td>{{ log.valor_anterior or '-' }}</td>
+      <td>{{ log.valor_novo or '-' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
