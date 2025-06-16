@@ -3,14 +3,42 @@
 ![Interface do Sistema](docs/img/Tela%20principal.png)  
 [![Deploy Railway](https://img.shields.io/badge/Railway-Deploy-brightgreen?logo=railway)](https://gestao-agro-production.up.railway.app/)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Issues](https://img.shields.io/github/issues/Frraz/Gestao-Agro-Beta)](https://github.com/Frraz/Gestao-Agro-Beta/issues)
+[![Stars](https://img.shields.io/github/stars/Frraz/Gestao-Agro-Beta?style=social)](https://github.com/Frraz/Gestao-Agro-Beta/stargazers)
+<!-- [![Build Status](https://github.com/Frraz/Gestao-Agro-Beta/actions/workflows/ci.yml/badge.svg)](https://github.com/Frraz/Gestao-Agro-Beta/actions) -->
 
-> Gestão rural inteligente, moderna e automatizada, focada em produtividade, controle financeiro e documentação.
+> **Gestão rural moderna, produtiva e automatizada. Foco em produtividade, controle financeiro e documentação.**  
+> **Para produtores rurais, consultorias e empresas do agronegócio.**
 
 ---
 
-## 🔥 Veja online
+## 📑 Sumário
 
-➡️ [Acesse a demonstração](https://gestao-agro-production.up.railway.app/)
+- [🔎 Veja online e Documentação](#-veja-online-e-documentação)
+- [✨ Por que usar o Gestao-Agro?](#-por-que-usar-o-gestao-agro)
+- [📋 Principais Funcionalidades](#-principais-funcionalidades)
+- [🛠️ Tecnologias e Arquitetura](#️-tecnologias-e-arquitetura)
+- [🚀 Instalação Rápida](#-instalação-rápida)
+- [☁️ Deploy no Railway](#️-deploy-no-railway)
+- [🧪 Testes](#-testes)
+- [🐳 Docker](#-docker)
+- [🔧 Manutenção e Tarefas Automáticas](#-manutenção-e-tarefas-automáticas)
+- [📋 Requisitos](#-requisitos)
+- [📁 Estrutura do Projeto](#-estrutura-do-projeto)
+- [✨ Melhorias da Versão 2.0](#-principais-melhorias-da-versão-20)
+- [📊 Métricas de Melhoria](#-métricas-de-melhoria)
+- [🔮 Roadmap Futuro](#-roadmap-futuro)
+- [🤝 Como Contribuir](#-como-contribuir)
+- [📄 Licença](#-licença)
+- [📞 Suporte](#-suporte)
+- [❓ FAQ](#-faq)
+
+---
+
+## 🔎 Veja online e Documentação
+
+- [➡️ **Acesse a demonstração**](https://gestao-agro-production.up.railway.app/)
+- [📚 **Documentação completa**](docs/README.md)
 
 ---
 
@@ -60,8 +88,6 @@ cp .env.example .env      # Edite o arquivo com suas configurações
 python src/main.py
 ```
 
-Acesse a [documentação completa em `/docs`](docs/README.md)
-
 ---
 
 ## ☁️ Deploy no Railway
@@ -88,7 +114,7 @@ chmod +x test_mysql.sh
 
 ---
 
-## 🐳 Deploy Local com Docker
+## 🐳 Docker
 
 ```bash
 docker-compose up --build
@@ -210,6 +236,19 @@ Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICE
 - Abra uma [issue](https://github.com/Frraz/Gestao-Agro-Beta/issues)
 - [Documentação completa](docs/)
 - [Relatório de melhorias](RELATORIO_MELHORIAS_COMPLETO.md)
+
+---
+
+## ❓ FAQ
+
+**1. O sistema funciona em Windows/Linux/Mac?**  
+Sim, é multiplataforma. Basta ter Python 3.8+ instalado.
+
+**2. Preciso de MySQL obrigatoriamente?**  
+Não. Para testes e ambiente de desenvolvimento, SQLite já funciona. MySQL é recomendado para produção.
+
+**3. O sistema é gratuito?**  
+Sim, 100% open source sob licença MIT.
 
 ---
 
