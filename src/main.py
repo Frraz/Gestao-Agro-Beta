@@ -1,3 +1,5 @@
+# /src/main.py
+
 import os
 import sys
 import logging
@@ -16,10 +18,12 @@ from src.routes.fazenda import fazenda_bp
 from src.routes.documento import documento_bp
 from src.routes.endividamento import endividamento_bp
 from src.routes.auth import auth_bp
+from src.routes.auditoria import auditoria_bp
 from src.utils.performance import init_performance_optimizations, PerformanceMiddleware
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 from sqlalchemy import text
 from flask_login import LoginManager
+from src.utils.filters import register_filters
 
 def configure_logging(app):
     """Configura o sistema de logs da aplicação"""
@@ -41,6 +45,9 @@ def allowed_file(filename):
 
 def create_app(test_config=None):
     app = Flask(__name__)
+
+    # Registra filtros customizados do Jinja2
+    register_filters(app)
 
     # Flask-Login
     login_manager = LoginManager()
@@ -93,7 +100,7 @@ def create_app(test_config=None):
     app.config['REDIS_URL'] = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
     # Configurar logging
-    app = configure_logging(app)
+    configure_logging(app)
 
     # Inicialização do banco de dados
     db.init_app(app)
@@ -114,6 +121,7 @@ def create_app(test_config=None):
     app.register_blueprint(documento_bp)
     app.register_blueprint(endividamento_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(auditoria_bp)
 
     # Rota raiz
     @app.route('/')
