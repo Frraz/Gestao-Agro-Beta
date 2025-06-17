@@ -1,6 +1,6 @@
 # 🌾 Sistema de Gestão Agrícola
 
-![Interface do Sistema](docs/img/Tela%20principal1.png)  
+![Interface do Sistema](docs/img/Tela%20principal.png)  
 [![Deploy Railway](https://img.shields.io/badge/Railway-Deploy-brightgreen?logo=railway)](https://gestao-agro-production.up.railway.app/)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Issues](https://img.shields.io/github/issues/Frraz/Gestao-Agro-Beta)](https://github.com/Frraz/Gestao-Agro-Beta/issues)
