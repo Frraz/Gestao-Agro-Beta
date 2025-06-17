@@ -1,13 +1,17 @@
 #/src/routes/admin.py
 
+import datetime
+from math import ceil
+from datetime import date
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask_login import login_required
+
 from src.models.db import db
 from src.models.documento import Documento, TipoDocumento, TipoEntidade
 from src.models.fazenda import Fazenda, TipoPosse
 from src.models.pessoa import Pessoa
-import datetime
 from src.utils.email_service import verificar_documentos_vencendo, EmailService, formatar_email_notificacao
-from flask_login import login_required
 from src.utils.auditoria import registrar_auditoria 
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -16,21 +20,47 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 @login_required
 def index():
     """Página inicial do painel administrativo."""
+    return redirect(url_for('admin.dashboard'))
+
+@admin_bp.route('/dashboard')
+@login_required
+def dashboard():
+    hoje = date.today()
+
+    prox_page = int(request.args.get('prox_page', 1))
+    venc_page = int(request.args.get('venc_page', 1))
+    per_page = 10
+
+    docs_proximos_query = Documento.query.filter(
+        Documento.data_vencimento >= hoje
+    ).order_by(Documento.data_vencimento.asc())
+    total_proximos = docs_proximos_query.count()
+    docs_proximos = docs_proximos_query.offset((prox_page-1)*per_page).limit(per_page).all()
+    total_pag_proximos = ceil(total_proximos / per_page)
+
+    docs_vencidos_query = Documento.query.filter(
+        Documento.data_vencimento < hoje
+    ).order_by(Documento.data_vencimento.asc())
+    total_vencidos = docs_vencidos_query.count()
+    docs_vencidos = docs_vencidos_query.offset((venc_page-1)*per_page).limit(per_page).all()
+    total_pag_vencidos = ceil(total_vencidos / per_page)
+
     total_pessoas = Pessoa.query.count()
     total_fazendas = Fazenda.query.count()
     total_documentos = Documento.query.count()
-    documentos = Documento.query.filter(Documento.data_vencimento.isnot(None)).all()
-    documentos_vencidos = [d for d in documentos if d.esta_vencido]
-    documentos_proximos = [d for d in documentos if d.precisa_notificar]
+
     return render_template(
         'admin/index.html',
         total_pessoas=total_pessoas,
         total_fazendas=total_fazendas,
         total_documentos=total_documentos,
-        documentos_vencidos=documentos_vencidos,
-        documentos_proximos=documentos_proximos
+        documentos_proximos=docs_proximos,
+        documentos_vencidos=docs_vencidos,
+        prox_page=prox_page,
+        total_pag_proximos=total_pag_proximos,
+        venc_page=venc_page,
+        total_pag_vencidos=total_pag_vencidos
     )
-
 
 # --- Rotas para Pessoas ---
 @admin_bp.route('/pessoas')
