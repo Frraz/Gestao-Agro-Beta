@@ -3,6 +3,7 @@
 import os
 import sys
 import logging
+import datetime
 from logging.handlers import RotatingFileHandler
 
 # Ajuste o sys.path ANTES dos imports locais do projeto:
@@ -24,9 +25,11 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 from sqlalchemy import text
 from flask_login import LoginManager
 from src.utils.filters import register_filters
+from src.routes.test import test_bp
+from dotenv import load_dotenv
+load_dotenv()
 
 def configure_logging(app):
-    """Configura o sistema de logs da aplicação"""
     if not os.path.exists('logs'):
         os.mkdir('logs')
     file_handler = RotatingFileHandler('logs/sistema_fazendas.log', maxBytes=10240, backupCount=10)
@@ -46,10 +49,11 @@ def allowed_file(filename):
 def create_app(test_config=None):
     app = Flask(__name__)
 
-    # Registra filtros customizados do Jinja2
     register_filters(app)
 
-    # Flask-Login
+    print("MAIL_USERNAME:", os.environ.get('MAIL_USERNAME'))
+    print("MAIL_DEFAULT_SENDER:", os.environ.get('MAIL_DEFAULT_SENDER'))
+    
     login_manager = LoginManager()
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
@@ -59,15 +63,12 @@ def create_app(test_config=None):
     def load_user(user_id):
         return Usuario.query.get(int(user_id))
 
-    # Configurações básicas
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.urandom(24)
-
-    # Configurações de upload
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
 
-    # Configurações do banco de dados
+    # Configuração do banco de dados
     if test_config is None:
         db_url = os.environ.get('DATABASE_URL')
         if db_url:
@@ -88,33 +89,25 @@ def create_app(test_config=None):
         app.config.update(test_config)
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # Configurações de e-mail para notificações
     app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
     app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
     app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
     app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
     app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
     app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@gestaofazendas.com.br')
-
-    # Configurações de cache
     app.config['REDIS_URL'] = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
-    # Configurar logging
     configure_logging(app)
 
-    # Inicialização do banco de dados
     db.init_app(app)
     from flask_migrate import Migrate
     Migrate(app, db)
 
-    # Inicializar otimizações de performance
     init_performance_optimizations(app)
     PerformanceMiddleware(app)
 
-    # Criação dos diretórios de upload
     os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'documentos'), exist_ok=True)
 
-    # Registro dos blueprints
     app.register_blueprint(admin_bp)
     app.register_blueprint(pessoa_bp)
     app.register_blueprint(fazenda_bp)
@@ -122,20 +115,18 @@ def create_app(test_config=None):
     app.register_blueprint(endividamento_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(auditoria_bp)
+    app.register_blueprint(test_bp)
 
-    # Rota raiz
     @app.route('/')
     def index():
         return redirect(url_for('admin.index'))
 
-    # Manipulador de erro para arquivos muito grandes
     @app.errorhandler(413)
     def request_entity_too_large(error):
         app.logger.warning(f'Tentativa de upload de arquivo muito grande: {request.url}')
         flash(f'O arquivo é muito grande. O tamanho máximo permitido é {app.config["MAX_CONTENT_LENGTH"] / (1024 * 1024)}MB.', 'danger')
         return redirect(request.url)
 
-    # Manipulador de erro para arquivos não permitidos
     @app.errorhandler(400)
     def bad_request(error):
         app.logger.warning(f'Bad request: {error}')
@@ -145,20 +136,17 @@ def create_app(test_config=None):
             flash('Requisição inválida. Verifique os dados informados.', 'danger')
         return redirect(request.url)
 
-    # Manipulador de erro 404 (página não encontrada)
     @app.errorhandler(404)
     def page_not_found(error):
         app.logger.info(f'Página não encontrada: {request.url}')
         return render_template('errors/404.html'), 404
 
-    # Manipulador de erro 500 (erro interno do servidor)
     @app.errorhandler(500)
     def internal_server_error(error):
         app.logger.error(f'Erro interno do servidor: {error}')
         db.session.rollback()
         return render_template('errors/500.html'), 500
 
-    # Manipulador para erros de banco de dados
     @app.errorhandler(SQLAlchemyError)
     def handle_db_error(error):
         app.logger.error(f'Erro de banco de dados: {error}')
@@ -171,7 +159,6 @@ def create_app(test_config=None):
             flash('Ocorreu um erro no banco de dados. Por favor, tente novamente.', 'danger')
         return redirect(url_for('admin.index'))
 
-    # Inicialização do banco de dados
     with app.app_context():
         try:
             db.create_all()
@@ -180,7 +167,6 @@ def create_app(test_config=None):
             app.logger.error(f'Erro ao inicializar banco de dados: {e}')
             print(f"ERRO: Não foi possível conectar ao banco de dados: {e}")
 
-    # Rota para verificar status do sistema
     @app.route('/health')
     def health_check():
         try:
@@ -189,6 +175,22 @@ def create_app(test_config=None):
         except Exception as e:
             app.logger.error(f'Erro no health check: {e}')
             return jsonify({'status': 'error', 'database': 'disconnected', 'error': str(e)}), 500
+
+    # Rota temporária para testar o template de notificação por e-mail
+    @app.route('/testar-email-notificacao')
+    def testar_email_notificacao():
+        class DummyDoc:
+            nome = "Licença Ambiental"
+            tipo = type("Tipo", (), {"value": "Certidão"})
+            data_emissao = datetime.datetime(2024, 1, 1)
+            data_vencimento = datetime.datetime(2024, 12, 31)
+            tipo_entidade = type("TipoEntidade", (), {"value": "Fazenda/Área"})
+            nome_entidade = "Fazenda Santa Luzia"
+        doc = DummyDoc()
+        dias_restantes = 5
+        from src.utils.email_service import formatar_email_notificacao
+        assunto, corpo_html = formatar_email_notificacao(doc, dias_restantes, responsavel="Fulano", link_documento="https://meusistema.com/doc/123")
+        return corpo_html
 
     return app
 

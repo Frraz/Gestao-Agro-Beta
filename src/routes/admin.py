@@ -1,13 +1,12 @@
 #/src/routes/admin.py
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from src.models.db import db
 from src.models.documento import Documento, TipoDocumento, TipoEntidade
 from src.models.fazenda import Fazenda, TipoPosse
 from src.models.pessoa import Pessoa
-import os
 import datetime
-from src.utils.email_service import verificar_documentos_vencendo, EmailService
+from src.utils.email_service import verificar_documentos_vencendo, EmailService, formatar_email_notificacao
 from flask_login import login_required
 from src.utils.auditoria import registrar_auditoria 
 
@@ -17,60 +16,45 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 @login_required
 def index():
     """Página inicial do painel administrativo."""
-    # Contadores
     total_pessoas = Pessoa.query.count()
     total_fazendas = Fazenda.query.count()
     total_documentos = Documento.query.count()
-    
-    # Documentos vencidos ou próximos do vencimento
     documentos = Documento.query.filter(Documento.data_vencimento.isnot(None)).all()
-    documentos_vencidos = []
-    documentos_proximos = []
-    
-    for documento in documentos:
-        if documento.esta_vencido:
-            documentos_vencidos.append(documento)
-        elif documento.precisa_notificar:
-            documentos_proximos.append(documento)
-    
-    return render_template('admin/index.html', 
-                          total_pessoas=total_pessoas,
-                          total_fazendas=total_fazendas,
-                          total_documentos=total_documentos,
-                          documentos_vencidos=documentos_vencidos,
-                          documentos_proximos=documentos_proximos)
+    documentos_vencidos = [d for d in documentos if d.esta_vencido]
+    documentos_proximos = [d for d in documentos if d.precisa_notificar]
+    return render_template(
+        'admin/index.html',
+        total_pessoas=total_pessoas,
+        total_fazendas=total_fazendas,
+        total_documentos=total_documentos,
+        documentos_vencidos=documentos_vencidos,
+        documentos_proximos=documentos_proximos
+    )
 
-# Rotas para Pessoas
+
+# --- Rotas para Pessoas ---
 @admin_bp.route('/pessoas')
 @login_required
 def listar_pessoas():
-    """Lista todas as pessoas cadastradas."""
     pessoas = Pessoa.query.all()
     return render_template('admin/pessoas/listar.html', pessoas=pessoas)
 
 @admin_bp.route('/pessoas/nova', methods=['GET', 'POST'])
 @login_required
 def nova_pessoa():
-    """Cadastra uma nova pessoa."""
     if request.method == 'POST':
         nome = request.form.get('nome')
         cpf_cnpj = request.form.get('cpf_cnpj')
         email = request.form.get('email')
         telefone = request.form.get('telefone')
         endereco = request.form.get('endereco')
-        
-        # Validação básica
         if not nome or not cpf_cnpj:
             flash('Nome e CPF/CNPJ são obrigatórios.', 'danger')
             return render_template('admin/pessoas/form.html')
-        
-        # Verificar se já existe pessoa com o mesmo CPF/CNPJ
         pessoa_existente = Pessoa.query.filter_by(cpf_cnpj=cpf_cnpj).first()
         if pessoa_existente:
             flash(f'Já existe uma pessoa cadastrada com o CPF/CNPJ {cpf_cnpj}.', 'danger')
             return render_template('admin/pessoas/form.html')
-        
-        # Criar nova pessoa
         nova_pessoa = Pessoa(
             nome=nome,
             cpf_cnpj=cpf_cnpj,
@@ -78,10 +62,8 @@ def nova_pessoa():
             telefone=telefone,
             endereco=endereco
         )
-        
         db.session.add(nova_pessoa)
         db.session.commit()
-        # LOG DE AUDITORIA
         registrar_auditoria(
             acao="criação",
             entidade="Pessoa",
@@ -95,28 +77,20 @@ def nova_pessoa():
 @admin_bp.route('/pessoas/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar_pessoa(id):
-    """Edita uma pessoa existente."""
     pessoa = Pessoa.query.get_or_404(id)
-    
     if request.method == 'POST':
         nome = request.form.get('nome')
         cpf_cnpj = request.form.get('cpf_cnpj')
         email = request.form.get('email')
         telefone = request.form.get('telefone')
         endereco = request.form.get('endereco')
-        
-        # Validação básica
         if not nome or not cpf_cnpj:
             flash('Nome e CPF/CNPJ são obrigatórios.', 'danger')
             return render_template('admin/pessoas/form.html', pessoa=pessoa)
-        
-        # Verificar se já existe outra pessoa com o mesmo CPF/CNPJ
         pessoa_existente = Pessoa.query.filter_by(cpf_cnpj=cpf_cnpj).first()
         if pessoa_existente and pessoa_existente.id != pessoa.id:
             flash(f'Já existe outra pessoa cadastrada com o CPF/CNPJ {cpf_cnpj}.', 'danger')
             return render_template('admin/pessoas/form.html', pessoa=pessoa)
-        
-        # Captura os dados antigos ANTES de atualizar
         valor_anterior = {
             "id": pessoa.id,
             "nome": pessoa.nome,
@@ -125,17 +99,12 @@ def editar_pessoa(id):
             "telefone": pessoa.telefone,
             "endereco": pessoa.endereco
         }
-        
-        # Atualizar pessoa
         pessoa.nome = nome
         pessoa.cpf_cnpj = cpf_cnpj
         pessoa.email = email
         pessoa.telefone = telefone
         pessoa.endereco = endereco
-        
         db.session.commit()
-        
-        # LOG DE AUDITORIA
         registrar_auditoria(
             acao="edição",
             entidade="Pessoa",
@@ -156,21 +125,14 @@ def editar_pessoa(id):
 @admin_bp.route('/pessoas/<int:id>/excluir', methods=['POST'])
 @login_required
 def excluir_pessoa(id):
-    """Exclui uma pessoa do sistema."""
     pessoa = Pessoa.query.get_or_404(id)
-    
-    # Verificar se a pessoa tem fazendas associadas
     if pessoa.fazendas:
         flash(f'Não é possível excluir a pessoa {pessoa.nome} pois ela possui fazendas associadas.', 'danger')
         return redirect(url_for('admin.listar_pessoas'))
-    
-    # Verificar se a pessoa tem documentos associados
     if hasattr(pessoa, 'documentos') and pessoa.documentos:
         flash(f'Não é possível excluir a pessoa {pessoa.nome} pois ela possui documentos associados.', 'danger')
         return redirect(url_for('admin.listar_pessoas'))
-    
     nome = pessoa.nome
-    # Capture o estado ANTES de deletar
     valor_anterior = {
         "id": pessoa.id,
         "nome": pessoa.nome,
@@ -181,7 +143,6 @@ def excluir_pessoa(id):
     }
     db.session.delete(pessoa)
     db.session.commit()
-    # LOG DE AUDITORIA
     registrar_auditoria(
         acao="exclusão",
         entidade="Pessoa",
@@ -500,13 +461,15 @@ def listar_documentos():
     documentos = Documento.query.all()
     return render_template('admin/documentos/listar.html', documentos=documentos)
 
+# --------- Rotas para Documentos ---------
 @admin_bp.route('/documentos/novo', methods=['GET', 'POST'])
 @login_required
 def novo_documento():
     """Cadastra um novo documento."""
     fazendas = Fazenda.query.all()
     pessoas = Pessoa.query.all()
-    
+    tipos_documento = TipoDocumento  # Enum para template
+
     if request.method == 'POST':
         nome = request.form.get('nome')
         tipo = request.form.get('tipo')
@@ -517,59 +480,37 @@ def novo_documento():
         tipo_entidade = request.form.get('tipo_entidade')
         fazenda_id = request.form.get('fazenda_id') if tipo_entidade == 'FAZENDA' else None
         pessoa_id = request.form.get('pessoa_id') if tipo_entidade == 'PESSOA' else None
-        
-        # Obter múltiplos prazos de notificação
+
         prazos_notificacao = request.form.getlist('prazo_notificacao[]')
-        if not prazos_notificacao:
-            prazos_notificacao = []  # Lista vazia se nenhum prazo selecionado
-        else:
-            prazos_notificacao = [int(prazo) for prazo in prazos_notificacao]
-        
+        prazos_notificacao = [int(p) for p in prazos_notificacao if p.isdigit()]
+
         # Validação básica
         if not nome or not tipo or not data_emissao:
             flash('Todos os campos com * são obrigatórios.', 'danger')
             return render_template('admin/documentos/form.html', 
-                                  tipos_documento=TipoDocumento, 
-                                  fazendas=fazendas,
-                                  pessoas=pessoas)
-        
-        # Validação da entidade relacionada
+                tipos_documento=tipos_documento, fazendas=fazendas, pessoas=pessoas)
         if tipo_entidade == 'FAZENDA' and not fazenda_id:
             flash('Selecione uma fazenda/área para relacionar o documento.', 'danger')
             return render_template('admin/documentos/form.html', 
-                                  tipos_documento=TipoDocumento, 
-                                  fazendas=fazendas,
-                                  pessoas=pessoas)
-        elif tipo_entidade == 'PESSOA' and not pessoa_id:
+                tipos_documento=tipos_documento, fazendas=fazendas, pessoas=pessoas)
+        if tipo_entidade == 'PESSOA' and not pessoa_id:
             flash('Selecione uma pessoa para relacionar o documento.', 'danger')
             return render_template('admin/documentos/form.html', 
-                                  tipos_documento=TipoDocumento, 
-                                  fazendas=fazendas,
-                                  pessoas=pessoas)
-        
-        # Validação do tipo personalizado
+                tipos_documento=tipos_documento, fazendas=fazendas, pessoas=pessoas)
         if tipo == 'Outros' and not tipo_personalizado:
             flash('Para o tipo "Outros", é necessário informar o tipo personalizado.', 'danger')
             return render_template('admin/documentos/form.html', 
-                                  tipos_documento=TipoDocumento, 
-                                  fazendas=fazendas,
-                                  pessoas=pessoas)
-        
+                tipos_documento=tipos_documento, fazendas=fazendas, pessoas=pessoas)
         # Converter datas
         try:
             data_emissao = datetime.datetime.strptime(data_emissao, '%Y-%m-%d').date()
-            if data_vencimento:
-                data_vencimento = datetime.datetime.strptime(data_vencimento, '%Y-%m-%d').date()
-            else:
-                data_vencimento = None
-        except ValueError:
+            data_vencimento = datetime.datetime.strptime(data_vencimento, '%Y-%m-%d').date() if data_vencimento else None
+        except Exception:
             flash('Formato de data inválido.', 'danger')
             return render_template('admin/documentos/form.html', 
-                                  tipos_documento=TipoDocumento, 
-                                  fazendas=fazendas,
-                                  pessoas=pessoas)
-        
-        # Criar novo documento
+                tipos_documento=tipos_documento, fazendas=fazendas, pessoas=pessoas)
+
+        # Criar documento
         novo_documento = Documento(
             nome=nome,
             tipo=TipoDocumento(tipo),
@@ -580,17 +521,10 @@ def novo_documento():
             fazenda_id=int(fazenda_id) if fazenda_id else None,
             pessoa_id=int(pessoa_id) if pessoa_id else None
         )
-        
-        # Definir emails para notificação
         novo_documento.emails_notificacao = emails_notificacao
-        
-        # Definir prazos de notificação
         novo_documento.prazos_notificacao = prazos_notificacao
-        
         db.session.add(novo_documento)
         db.session.commit()
-        
-        # LOG DE AUDITORIA -- SUGERIDO: registre todos os campos relevantes
         registrar_auditoria(
             acao="criação",
             entidade="Documento",
@@ -611,11 +545,9 @@ def novo_documento():
         )
         flash(f'Documento {nome} cadastrado com sucesso!', 'success')
         return redirect(url_for('admin.listar_documentos'))
-    
+
     return render_template('admin/documentos/form.html', 
-                          tipos_documento=TipoDocumento, 
-                          fazendas=fazendas,
-                          pessoas=pessoas)
+        tipos_documento=tipos_documento, fazendas=fazendas, pessoas=pessoas)
 
 @admin_bp.route('/documentos/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
@@ -814,38 +746,52 @@ def listar_documentos_vencidos():
                           documentos_vencidos=documentos_vencidos,
                           documentos_proximos=documentos_proximos)
 
+# --------- Envio real de notificações de documentos ---------
 @admin_bp.route('/documentos/notificacoes', methods=['GET', 'POST'])
 @login_required
 def notificacoes_documentos():
     """Gerencia notificações de vencimento de documentos."""
     documentos_por_prazo = verificar_documentos_vencendo()
-    
     if request.method == 'POST':
-        # Lógica para enviar notificações manualmente
-        # Implementação futura
-        flash('Notificações enviadas com sucesso!', 'success')
+        total = 0
+        enviados = 0
+        erros = []
+        for prazo, docs in documentos_por_prazo.items():
+            for doc in docs:
+                emails = []
+                if hasattr(doc, 'emails_notificacao') and doc.emails_notificacao:
+                    if isinstance(doc.emails_notificacao, list):
+                        emails = doc.emails_notificacao
+                    else:
+                        emails = [e.strip() for e in doc.emails_notificacao.split(',') if e.strip()]
+                if not emails:
+                    continue
+                assunto, corpo_html = formatar_email_notificacao(doc, prazo)
+                enviado = EmailService().send_email(emails, assunto, corpo_html, html=True)
+                total += 1
+                if enviado:
+                    enviados += 1
+                else:
+                    erros.append(doc.nome)
+        if enviados:
+            flash(f'{enviados} de {total} notificações enviadas com sucesso!', 'success')
+        else:
+            flash('Nenhuma notificação enviada. Verifique se há e-mails cadastrados.', 'warning')
+        if erros:
+            flash(f'Falha ao enviar notificação para: {", ".join(erros)}', 'danger')
         return redirect(url_for('admin.notificacoes_documentos'))
-    
-    return render_template('admin/documentos/notificacoes.html', 
-                          documentos_por_prazo=documentos_por_prazo)
+    return render_template('admin/documentos/notificacoes.html', documentos_por_prazo=documentos_por_prazo)
+
 
 @admin_bp.route('/testar-email', methods=['POST'])
 @login_required
 def testar_email():
-    """Envia um e-mail de teste para verificar a configuração."""
     emails = request.form.get('emails', '')
-    
     if not emails:
         return jsonify({'sucesso': False, 'mensagem': 'Nenhum e-mail informado.'})
-    
-    # Converter string de emails para lista
     lista_emails = [email.strip() for email in emails.split(',') if email.strip()]
-    
     if not lista_emails:
         return jsonify({'sucesso': False, 'mensagem': 'Formato de e-mail inválido.'})
-    
-    # Enviar e-mail de teste
     sucesso = EmailService().enviar_email_teste(lista_emails)
     mensagem = "E-mail de teste enviado com sucesso." if sucesso else "Falha ao enviar e-mail de teste. Verifique as configurações."
-    
     return jsonify({'sucesso': sucesso, 'mensagem': mensagem})

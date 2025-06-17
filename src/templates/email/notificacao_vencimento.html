@@ -1,0 +1,53 @@
+{% set alerta_cor = {'danger': '#f8d7da', 'warning': '#fff3cd', 'info': '#d1ecf1'}[classe_alerta] %}
+{% set alerta_borda = {'danger': '#f5c2c7', 'warning': '#ffecb5', 'info': '#bee5eb'}[classe_alerta] %}
+{% set alerta_texto = {'danger': '#842029', 'warning': '#664d03', 'info': '#055160'}[classe_alerta] %}
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Notificação de Vencimento de Documento</title>
+    <style>
+      body { font-family: Arial, sans-serif; background: #f6f8fa; margin: 0; padding: 0; }
+      .container { max-width: 600px; margin: 30px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; overflow: hidden; }
+      .header { background: #128C7E; color: #fff; padding: 24px 20px 16px 20px; text-align: center; }
+      .logo { height: 48px; margin-bottom: 8px; }
+      .content { padding: 24px 20px 12px 20px; color: #333; }
+      .cta { display: inline-block; background: #28a745; color: #fff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; margin: 20px 0; }
+      .footer { background: #f8f9fa; font-size: 12px; color: #888; text-align: center; padding: 16px 20px; border-top: 1px solid #eee; }
+      .alert { padding: 16px; border-radius: 4px; margin-bottom: 20px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <img src="https://www.seudominio.com.br/logo.png" alt="Logo" class="logo">
+        <h2>Sistema de Gestão Agrícola</h2>
+      </div>
+      <div class="content">
+        <p>Olá{% if responsavel %}, <strong>{{ responsavel }}</strong>{% endif %},</p>
+        <div class="alert" style="background: {{ alerta_cor }}; color: {{ alerta_texto }}; border: 1px solid {{ alerta_borda }};">
+          <h3>{{ nivel_urgencia }}: Documento prestes a vencer</h3>
+          <p>O documento <strong>'{{ nome_documento }}'</strong> vencerá em <strong>{{ dias_restantes }} dias</strong>, em {{ data_vencimento }}.</p>
+        </div>
+        <h4>Detalhes do Documento:</h4>
+        <ul>
+          <li><b>Nome:</b> {{ nome_documento }}</li>
+          <li><b>Tipo:</b> {{ tipo_documento }}</li>
+          <li><b>Data de Emissão:</b> {{ data_emissao }}</li>
+          <li><b>Data de Vencimento:</b> {{ data_vencimento }}</li>
+          <li><b>{{ tipo_entidade }} Relacionada:</b> {{ nome_entidade }}</li>
+        </ul>
+        {% if link_documento %}
+        <p>
+          <a href="{{ link_documento }}" class="cta">Ver Documento</a>
+        </p>
+        {% endif %}
+      </div>
+      <div class="footer">
+        Esta é uma mensagem automática do Sistema de Gestão Agrícola.<br>
+        Não responda a este e-mail.<br>
+        Dúvidas? Contate o suporte: <a href="mailto:suporte@seudominio.com.br">suporte@seudominio.com.br</a><br>
+        © {{ ano_atual }} Sua Empresa. Todos os direitos reservados.
+      </div>
+    </div>
+  </body>
+</html>
