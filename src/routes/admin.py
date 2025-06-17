@@ -487,9 +487,34 @@ def listar_documentos_fazenda(id):
 @admin_bp.route('/documentos')
 @login_required
 def listar_documentos():
-    """Lista todos os documentos cadastrados."""
-    documentos = Documento.query.all()
-    return render_template('admin/documentos/listar.html', documentos=documentos)
+    """Lista todos os documentos cadastrados, com filtros."""
+    fazendas = Fazenda.query.order_by(Fazenda.nome).all()
+    pessoas = Pessoa.query.order_by(Pessoa.nome).all()
+
+    fazenda_id = request.args.get("fazenda_id", type=int)
+    pessoa_id = request.args.get("pessoa_id", type=int)
+    nome_busca = request.args.get("busca", "")
+
+    query = Documento.query
+
+    if fazenda_id:
+        query = query.filter(Documento.fazenda_id == fazenda_id)
+    if pessoa_id:
+        query = query.filter(Documento.pessoa_id == pessoa_id)
+    if nome_busca:
+        query = query.filter(Documento.nome.ilike(f"%{nome_busca}%"))
+
+    documentos = query.order_by(Documento.data_vencimento.asc()).all()
+
+    return render_template(
+        'admin/documentos/listar.html',
+        documentos=documentos,
+        fazendas=fazendas,
+        pessoas=pessoas,
+        fazenda_id=fazenda_id,
+        pessoa_id=pessoa_id,
+        nome_busca=nome_busca,
+    )
 
 # --------- Rotas para Documentos ---------
 @admin_bp.route('/documentos/novo', methods=['GET', 'POST'])
