@@ -67,7 +67,7 @@ class EmailService:
         assunto = "Teste de Notificação - Sistema de Gestão Agrícola"
         data_hora_atual = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         corpo_html = f"""
-        <html>
+        <html lang="pt-BR">
         <head>
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
