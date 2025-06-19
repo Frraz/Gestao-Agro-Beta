@@ -1,3 +1,5 @@
+# /src/utils/validators.py
+
 # Utilitários para validação e segurança
 from flask import request, abort
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -125,4 +127,3 @@ def validate_numeric_field(value, min_value=None, max_value=None):
         return True
     except (ValueError, TypeError):
         return False
-

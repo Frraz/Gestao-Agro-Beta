@@ -13,6 +13,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class NotificacaoEndividamentoService:
+    """
+    Serviço para monitoramento e envio de notificações relacionadas a endividamentos.
+    Notifica por e-mail e WhatsApp conforme intervalos pré-definidos antes do vencimento.
+    """
+
     INTERVALOS_NOTIFICACAO = {
         '6_meses': 180,
         '3_meses': 90,
@@ -22,11 +27,15 @@ class NotificacaoEndividamentoService:
         '3_dias': 3,
         '1_dia': 1
     }
-    
+
     def __init__(self):
         self.email_service = EmailService()
-    
+
     def verificar_e_enviar_notificacoes(self):
+        """
+        Verifica endividamentos com vencimento próximo e envia notificações, evitando repetições.
+        Retorna o total de notificações enviadas.
+        """
         hoje = date.today()
         notificacoes_enviadas = 0
         try:
@@ -43,7 +52,7 @@ class NotificacaoEndividamentoService:
         except Exception as e:
             logger.error(f"Erro ao processar notificações: {str(e)}")
             return 0
-    
+
     def _processar_endividamento(self, endividamento, hoje):
         notificacoes_enviadas = 0
         dias_para_vencimento = (endividamento.data_vencimento_final - hoje).days
@@ -53,8 +62,11 @@ class NotificacaoEndividamentoService:
                     if self._enviar_notificacao(endividamento, tipo_notificacao):
                         notificacoes_enviadas += 1
         return notificacoes_enviadas
-    
+
     def _ja_foi_enviada(self, endividamento_id, tipo_notificacao):
+        """
+        Verifica se já foi enviada uma notificação desse tipo para esse endividamento.
+        """
         return db.session.query(HistoricoNotificacao).filter(
             and_(
                 HistoricoNotificacao.endividamento_id == endividamento_id,
@@ -62,8 +74,11 @@ class NotificacaoEndividamentoService:
                 HistoricoNotificacao.sucesso == True
             )
         ).first() is not None
-    
+
     def _enviar_notificacao(self, endividamento, tipo_notificacao):
+        """
+        Envia as notificações (e-mail e WhatsApp) e registra o histórico.
+        """
         try:
             notificacao_config = NotificacaoEndividamento.query.filter_by(
                 endividamento_id=endividamento.id,
@@ -109,9 +124,13 @@ class NotificacaoEndividamentoService:
                 False,
                 str(e)
             )
+            logger.error(f"Erro ao enviar notificação: {str(e)}")
             return False
 
     def _preparar_email(self, endividamento, tipo_notificacao):
+        """
+        Prepara o assunto e corpo do e-mail de notificação.
+        """
         dias = self.INTERVALOS_NOTIFICACAO[tipo_notificacao]
         if dias >= 30:
             if dias == 180:
@@ -124,7 +143,7 @@ class NotificacaoEndividamentoService:
             periodo = f"{dias} dia{'s' if dias > 1 else ''}"
         assunto = f"Lembrete: Endividamento vence em {periodo} - {endividamento.banco}"
         valor_total_pendente = sum(
-            parcela.valor for parcela in endividamento.parcelas 
+            parcela.valor for parcela in endividamento.parcelas
             if not parcela.pago
         )
         pessoas_nomes = [pessoa.nome for pessoa in endividamento.pessoas]
@@ -150,6 +169,9 @@ class NotificacaoEndividamentoService:
         return assunto, corpo
 
     def _preparar_mensagem_whatsapp(self, endividamento, tipo_notificacao):
+        """
+        Prepara o texto da mensagem WhatsApp de notificação.
+        """
         dias = self.INTERVALOS_NOTIFICACAO[tipo_notificacao]
         if dias >= 30:
             if dias == 180:
@@ -161,7 +183,7 @@ class NotificacaoEndividamentoService:
         else:
             periodo = f"{dias} dia{'s' if dias > 1 else ''}"
         valor_total_pendente = sum(
-            parcela.valor for parcela in endividamento.parcelas 
+            parcela.valor for parcela in endividamento.parcelas
             if not parcela.pago
         )
         pessoas_nomes = [pessoa.nome for pessoa in endividamento.pessoas]
@@ -180,6 +202,9 @@ class NotificacaoEndividamentoService:
         return mensagem
 
     def _registrar_historico(self, endividamento_id, tipo_notificacao, emails, whatsapps, sucesso, erro_mensagem=None):
+        """
+        Registra o histórico de envio da notificação.
+        """
         try:
             historico = HistoricoNotificacao(
                 endividamento_id=endividamento_id,

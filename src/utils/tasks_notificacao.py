@@ -7,7 +7,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 def processar_notificacoes():
-    """Tarefa agendada para processar notificações de endividamento e documentos"""
+    """
+    Tarefa agendada para processar notificações de endividamento e documentos.
+
+    Retorna:
+        int: Total de notificações de endividamento enviadas (documentos não retorna contagem).
+    """
     try:
         endividamento_service = NotificacaoEndividamentoService()
         notificacoes_endividamento = endividamento_service.verificar_e_enviar_notificacoes()

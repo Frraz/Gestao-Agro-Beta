@@ -291,4 +291,3 @@ class PerformanceMiddleware:
                     f"Requisição lenta: {request.method} {request.path} - {duration:.2f}s"
                 )
         return response
-    
