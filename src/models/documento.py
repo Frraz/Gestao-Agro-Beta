@@ -1,6 +1,4 @@
 #src/models/documento.py
-
-
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Enum, Table, Text, Index
 from sqlalchemy.orm import relationship, backref
 from src.models.db import db
@@ -40,10 +38,6 @@ class Documento(db.Model):
     
     # Emails para notificação (armazenados como JSON)
     _emails_notificacao = Column("emails_notificacao", Text, nullable=True)
-    # WhatsApps para notificação (armazenados como JSON)  # NOVO
-    _whatsapps_notificacao = Column("whatsapps_notificacao", Text, nullable=True)  # NOVO
-    # Notificar WhatsApp? Booleano (pode ser útil para ativar/desativar no form)  # NOVO
-    notificar_whatsapp = Column(db.Boolean, default=False, nullable=False)  # NOVO
     
     # Prazos de notificação armazenados como JSON
     _prazos_notificacao = Column("prazos_notificacao", Text, nullable=True)
@@ -91,31 +85,6 @@ class Documento(db.Model):
         except Exception:
             self._emails_notificacao = json.dumps([])
     
-    @property
-    def whatsapps_notificacao(self):
-        """Retorna a lista de WhatsApps para notificação."""
-        if not self._whatsapps_notificacao:
-            return []
-        try:
-            return json.loads(self._whatsapps_notificacao)
-        except json.JSONDecodeError:
-            return []
-    
-    @whatsapps_notificacao.setter
-    def whatsapps_notificacao(self, value):
-        """Define a lista de WhatsApps para notificação."""
-        try:
-            if isinstance(value, list):
-                self._whatsapps_notificacao = json.dumps(value)
-            elif isinstance(value, str):
-                # Aceita números separados por vírgula ou linha
-                whats = [num.strip() for num in value.replace('\n', ',').split(',') if num.strip()]
-                self._whatsapps_notificacao = json.dumps(whats)
-            else:
-                self._whatsapps_notificacao = json.dumps([])
-        except Exception:
-            self._whatsapps_notificacao = json.dumps([])
-
     @property
     def prazos_notificacao(self):
         """Retorna a lista de prazos de notificação."""

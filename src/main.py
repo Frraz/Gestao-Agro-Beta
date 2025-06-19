@@ -61,7 +61,7 @@ def create_app(test_config=None):
     from src.models.usuario import Usuario
     @login_manager.user_loader
     def load_user(user_id):
-        return db.session.get(Usuario, int(user_id))
+        return Usuario.query.get(int(user_id))
 
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.urandom(24)
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')

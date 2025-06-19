@@ -1,5 +1,3 @@
-# /src/models/auditoria.py
-
 from datetime import datetime
 from src.models.db import db
 

@@ -1,5 +1,3 @@
-<!-- /src/templates/admin/documentos/form.html-->
-
 {% extends 'layouts/base.html' %}
 
 {% block title %}Cadastro de Documento - Sistema de Gestão de Fazendas{% endblock %}
@@ -127,31 +125,6 @@
                         <div id="email_teste_resultado" class="mt-2" style="display: none;"></div>
                     </div>
                 </div>
-
-                <!-- NOVO BLOCO: WhatsApp para notificação -->
-                <div class="row mb-3">
-                    <div class="col-md-12">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="notificar_whatsapp" name="notificar_whatsapp" value="1" 
-                                {% if documento is defined and documento.notificar_whatsapp %}checked{% endif %}>
-                            <label class="form-check-label" for="notificar_whatsapp">
-                                Notificar também pelo WhatsApp
-                            </label>
-                        </div>
-                        <label for="whatsapps_notificacao" class="form-label">WhatsApp(s) para Notificação</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="whatsapps_notificacao" name="whatsapps_notificacao" 
-                                value="{{ ','.join(documento.whatsapps_notificacao) if documento is defined and documento.whatsapps_notificacao else '' }}"
-                                placeholder="Ex: +5511999999999,+5511888888888">
-                            <button class="btn btn-outline-success" type="button" id="btn_teste_whatsapp">
-                                <i class="fab fa-whatsapp"></i> Testar WhatsApp
-                            </button>
-                        </div>
-                        <small class="form-text text-muted">Informe um ou mais números (formato internacional) separados por vírgula. Exemplo: +5511999999999</small>
-                        <div id="whatsapp_teste_resultado" class="mt-2" style="display: none;"></div>
-                    </div>
-                </div>
-                <!-- FIM BLOCO WHATSAPP -->
                 
                 <div class="row mb-3">
                     <div class="col-md-12">
@@ -292,60 +265,6 @@
                 }
             });
         });
-
-        // Botão de teste de WhatsApp
-        $('#btn_teste_whatsapp').click(function() {
-            const whatsapps = $('#whatsapps_notificacao').val();
-            const nome = $('#nome').val();
-            const data_venc = $('#data_vencimento').val();
-            if (!whatsapps) {
-                alert('Por favor, informe pelo menos um número de WhatsApp para teste.');
-                return;
-            }
-            $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Enviando...');
-            $('#whatsapp_teste_resultado').hide().empty();
-            $.ajax({
-                url: "{{ url_for('documento.testar_whatsapp') }}",
-                type: 'POST',
-                data: { whatsapps: whatsapps, nome: nome, data_vencimento: data_venc },
-                success: function(response) {
-                    if (response.sucesso) {
-                        $('#whatsapp_teste_resultado')
-                            .removeClass('alert-danger')
-                            .addClass('alert alert-success')
-                            .html('<i class="fas fa-check-circle"></i> ' + response.mensagem)
-                            .show();
-                    } else {
-                        $('#whatsapp_teste_resultado')
-                            .removeClass('alert-success')
-                            .addClass('alert alert-danger')
-                            .html('<i class="fas fa-exclamation-circle"></i> ' + response.mensagem)
-                            .show();
-                    }
-                },
-                error: function() {
-                    $('#whatsapp_teste_resultado')
-                        .removeClass('alert-success')
-                        .addClass('alert alert-danger')
-                        .html('<i class="fas fa-exclamation-circle"></i> Erro ao enviar WhatsApp de teste. Verifique a configuração do servidor.')
-                        .show();
-                },
-                complete: function() {
-                    $('#btn_teste_whatsapp').prop('disabled', false).html('<i class="fab fa-whatsapp"></i> Testar WhatsApp');
-                }
-            });
-        });
-
-        // Habilita/desabilita campo WhatsApp conforme checkbox
-        $('#notificar_whatsapp').change(function() {
-            if ($(this).is(':checked')) {
-                $('#whatsapps_notificacao').prop('disabled', false);
-                $('#btn_teste_whatsapp').prop('disabled', false);
-            } else {
-                $('#whatsapps_notificacao').prop('disabled', true);
-                $('#btn_teste_whatsapp').prop('disabled', true);
-            }
-        }).trigger('change');
     });
 </script>
 {% endblock %}
