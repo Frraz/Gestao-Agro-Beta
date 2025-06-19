@@ -1,5 +1,3 @@
-<!-- /src/templates/layouts/base.html -->
-
 <!DOCTYPE html>
 <html lang="pt-br" data-theme="light">
 <head>
@@ -15,46 +13,53 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <!-- Loader global de feedback UX -->
+    <div id="spinner-overlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2000;background:rgba(255,255,255,0.6)">
+        <div class="d-flex justify-content-center align-items-center" style="height:100vh;">
+            <div class="spinner-border text-primary" role="status" aria-label="Carregando..."></div>
+        </div>
+    </div>
+
     <div class="wrapper">
         <!-- Sidebar -->
-        <nav id="sidebar" class="bg-dark text-white">
+        <nav id="sidebar" class="bg-dark text-white" aria-label="Navegação principal">
             <div class="sidebar-header">
                 <h3><i class="fas fa-seedling"></i> Gestão Agrícola</h3>
             </div>
 
             <ul class="list-unstyled components">
                 <li {% if request.path == '/admin/' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin.index') }}">
+                    <a href="{{ url_for('admin.index') }}" id="menu-dashboard">
                         <i class="fas fa-tachometer-alt"></i> Dashboard
                     </a>
                 </li>
                 <li {% if '/admin/pessoas' in request.path %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin.listar_pessoas') }}">
+                    <a href="{{ url_for('admin.listar_pessoas') }}" id="menu-pessoas">
                         <i class="fas fa-users"></i> Pessoas
                     </a>
                 </li>
                 <li {% if '/admin/fazendas' in request.path %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin.listar_fazendas') }}">
+                    <a href="{{ url_for('admin.listar_fazendas') }}" id="menu-fazendas">
                         <i class="fas fa-map-marked-alt"></i> Fazendas/Áreas
                     </a>
                 </li>
                 <li {% if '/admin/documentos' in request.path %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin.listar_documentos') }}">
+                    <a href="{{ url_for('admin.listar_documentos') }}" id="menu-documentos">
                         <i class="fas fa-file-alt"></i> Documentos
                     </a>
                 </li>
                 <li {% if '/endividamentos' in request.path %}class="active"{% endif %}>
-                    <a href="{{ url_for('endividamento.listar') }}">
+                    <a href="{{ url_for('endividamento.listar') }}" id="menu-endividamentos">
                         <i class="fas fa-credit-card"></i> Endividamentos
                     </a>
                 </li>
                 <li {% if '/admin/documentos/vencidos' in request.path %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin.listar_documentos_vencidos') }}">
+                    <a href="{{ url_for('admin.listar_documentos_vencidos') }}" id="menu-vencimentos">
                         <i class="fas fa-exclamation-triangle"></i> Vencimentos
                     </a>
                 </li>
                 <li {% if '/admin/auditoria' in request.path %}class="active"{% endif %}>
-                    <a href="{{ url_for('auditoria.painel_auditoria') }}">
+                    <a href="{{ url_for('auditoria.painel_auditoria') }}" id="menu-auditoria">
                         <i class="fa fa-clipboard-list"></i> Auditoria
                     </a>
                 </li>
@@ -68,7 +73,7 @@
         <div id="content" class="container-fluid">
             <nav class="navbar navbar-expand-lg navbar-light">
                 <div class="ms-auto d-flex align-items-center">
-                    <button type="button" id="themeToggle" class="theme-toggle" title="Alternar tema">
+                    <button type="button" id="themeToggle" class="theme-toggle" title="Alternar tema" aria-label="Alternar tema">
                         <i class="fas fa-moon" id="themeIcon"></i>
                     </button>
                     <span class="navbar-text ms-3 d-none d-md-inline">
@@ -88,6 +93,7 @@
                                     <button type="submit" class="dropdown-item"><i class="fas fa-sign-out-alt me-2"></i>Logout</button>
                                 </form>
                             </li>
+                            <!-- Removido botão do tour guiado -->
                         </ul>
                     </div>
                     {% endif %}
@@ -109,9 +115,9 @@
             {% endwith %}
 
             <!-- Main Content -->
-            <div class="container-fluid mt-3 fade-in">
+            <main id="main-content" class="container-fluid mt-3 fade-in">
                 {% block content %}{% endblock %}
-            </div>
+            </main>
         </div>
     </div>
 
