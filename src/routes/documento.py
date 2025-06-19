@@ -1,5 +1,7 @@
 #src/routes/documentos.py
+
 from src.utils.email_service import enviar_email_teste
+from src.utils.whatsapp_service import send_whatsapp_message
 import sys
 print("PYTHONPATH:", sys.path)
 import os
@@ -53,6 +55,8 @@ def listar_documentos():
                 'pessoa_id': documento.pessoa_id,
                 'entidade_nome': entidade_nome,
                 'emails_notificacao': documento.emails_notificacao,
+                'whatsapps_notificacao': documento.whatsapps_notificacao,  # NOVO
+                'notificar_whatsapp': documento.notificar_whatsapp,        # NOVO
                 'prazos_notificacao': documento.prazos_notificacao,
                 'esta_vencido': documento.esta_vencido,
                 'proximo_vencimento': documento.proximo_vencimento
@@ -87,6 +91,8 @@ def obter_documento(id):
             'pessoa_id': documento.pessoa_id,
             'entidade_nome': entidade_nome,
             'emails_notificacao': documento.emails_notificacao,
+            'whatsapps_notificacao': documento.whatsapps_notificacao,  # NOVO
+            'notificar_whatsapp': documento.notificar_whatsapp,        # NOVO
             'prazos_notificacao': documento.prazos_notificacao,
             'esta_vencido': documento.esta_vencido,
             'proximo_vencimento': documento.proximo_vencimento
@@ -180,7 +186,10 @@ def criar_documento():
         
         # Definir emails para notificação
         novo_documento.emails_notificacao = dados.get('emails_notificacao', '')
-        
+        # Definir whatsapps para notificação (NOVO)
+        novo_documento.whatsapps_notificacao = dados.get('whatsapps_notificacao', '')
+        # Definir flag notificar_whatsapp (NOVO)
+        novo_documento.notificar_whatsapp = bool(dados.get('notificar_whatsapp', False))
         # Definir prazos de notificação
         novo_documento.prazos_notificacao = prazos_notificacao
         
@@ -197,6 +206,8 @@ def criar_documento():
             'fazenda_id': novo_documento.fazenda_id,
             'pessoa_id': novo_documento.pessoa_id,
             'emails_notificacao': novo_documento.emails_notificacao,
+            'whatsapps_notificacao': novo_documento.whatsapps_notificacao,  # NOVO
+            'notificar_whatsapp': novo_documento.notificar_whatsapp,        # NOVO
             'prazos_notificacao': novo_documento.prazos_notificacao
         }), 201
     except IntegrityError as e:
@@ -283,6 +294,14 @@ def atualizar_documento(id):
         if 'emails_notificacao' in dados:
             documento.emails_notificacao = dados.get('emails_notificacao', '')
         
+        # Atualiza os whatsapps para notificação (NOVO)
+        if 'whatsapps_notificacao' in dados:
+            documento.whatsapps_notificacao = dados.get('whatsapps_notificacao', '')
+        
+        # Atualiza a flag de notificação por WhatsApp (NOVO)
+        if 'notificar_whatsapp' in dados:
+            documento.notificar_whatsapp = bool(dados.get('notificar_whatsapp', False))
+        
         # Processamento dos prazos de notificação
         prazo_notificacao = dados.get('prazo_notificacao', [])
         if prazo_notificacao:
@@ -324,6 +343,8 @@ def atualizar_documento(id):
             'pessoa_id': documento.pessoa_id,
             'entidade_nome': entidade_nome,
             'emails_notificacao': documento.emails_notificacao,
+            'whatsapps_notificacao': documento.whatsapps_notificacao,  # NOVO
+            'notificar_whatsapp': documento.notificar_whatsapp,        # NOVO
             'prazos_notificacao': documento.prazos_notificacao
         })
     except IntegrityError as e:
@@ -384,7 +405,8 @@ def listar_documentos_vencidos():
                     'fazenda_id': documento.fazenda_id,
                     'pessoa_id': documento.pessoa_id,
                     'entidade_nome': entidade_nome,
-                    'emails_notificacao': documento.emails_notificacao
+                    'emails_notificacao': documento.emails_notificacao,
+                    'whatsapps_notificacao': documento.whatsapps_notificacao  # NOVO
                 })
             elif documento.precisa_notificar:
                 proximos_vencimento.append({
@@ -398,6 +420,7 @@ def listar_documentos_vencidos():
                     'pessoa_id': documento.pessoa_id,
                     'entidade_nome': entidade_nome,
                     'emails_notificacao': documento.emails_notificacao,
+                    'whatsapps_notificacao': documento.whatsapps_notificacao,  # NOVO
                     'prazos_notificacao': documento.prazos_notificacao
                 })
         
@@ -435,3 +458,43 @@ def testar_email():
     except Exception as e:
         current_app.logger.error(f"Erro ao testar envio de e-mail: {str(e)}")
         return jsonify({'sucesso': False, 'mensagem': f'Erro ao enviar e-mail de teste: {str(e)}'}), 500
+
+@documento_bp.route('/testar-whatsapp', methods=['POST'])
+def testar_whatsapp():
+    """Envia uma mensagem de teste para os números de WhatsApp informados."""
+    try:
+        dados = request.form if request.form else request.json
+        whatsapps = dados.get('whatsapps', '')
+        nome_doc = dados.get('nome', 'Documento')
+        data_venc = dados.get('data_vencimento', '')
+        
+        if not whatsapps:
+            return jsonify({'sucesso': False, 'mensagem': 'Nenhum número de WhatsApp informado.'}), 400
+        
+        # Converter string de whatsapps para lista
+        lista_whatsapps = [num.strip() for num in whatsapps.replace('\n', ',').split(',') if num.strip()]
+        
+        if not lista_whatsapps:
+            return jsonify({'sucesso': False, 'mensagem': 'Formato de número de WhatsApp inválido.'}), 400
+        
+        corpo = (
+            f"Teste de notificação via WhatsApp do Sistema Gestão Agrícola.\n"
+            f"Documento: {nome_doc}\n"
+            f"Data de Vencimento: {data_venc if data_venc else 'N/A'}"
+        )
+        
+        erros = []
+        for numero in lista_whatsapps:
+            try:
+                send_whatsapp_message(numero, corpo)
+            except Exception as e:
+                erros.append(str(e))
+        
+        if not erros:
+            return jsonify({'sucesso': True, 'mensagem': 'Mensagem de teste enviada com sucesso para todos os números informados.'})
+        else:
+            return jsonify({'sucesso': False, 'mensagem': 'Erros ao enviar para alguns números: ' + '; '.join(erros)}), 500
+    
+    except Exception as e:
+        current_app.logger.error(f"Erro ao testar envio de WhatsApp: {str(e)}")
+        return jsonify({'sucesso': False, 'mensagem': f'Erro ao enviar WhatsApp de teste: {str(e)}'}), 500
