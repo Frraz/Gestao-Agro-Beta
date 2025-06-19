@@ -1,3 +1,5 @@
+# /src/models/__init__.py
+
 from src.models.pessoa import Pessoa
 from src.models.fazenda import Fazenda, TipoPosse
 from src.models.documento import Documento, TipoDocumento
