@@ -1,71 +1,72 @@
+# migrations/env.py
+
 import logging
 from logging.config import fileConfig
 
-from flask import current_app
-
 from alembic import context
+import os
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
 # Interpret the config file for Python logging.
-# This line sets up loggers basically.
 fileConfig(config.config_file_name)
 logger = logging.getLogger('alembic.env')
 
+# --------------------------------------------------
+# Tentamos importar Flask só se possível
+try:
+    from flask import current_app
+    flask_app = current_app
+except Exception:
+    flask_app = None
 
-def get_engine():
-    try:
-        # this works with Flask-SQLAlchemy<3 and Alchemical
-        return current_app.extensions['migrate'].db.get_engine()
-    except (TypeError, AttributeError):
-        # this works with Flask-SQLAlchemy>=3
-        return current_app.extensions['migrate'].db.engine
+# --------------------------------------------------
+if flask_app:
+    # Rodando dentro do contexto Flask
+    config.set_main_option('sqlalchemy.url', current_app.config.get('SQLALCHEMY_DATABASE_URI'))
+    target_db = current_app.extensions['migrate'].db
 
+    def get_metadata():
+        if hasattr(target_db, 'metadatas'):
+            return target_db.metadatas[None]
+        return target_db.metadata
 
-def get_engine_url():
-    try:
-        return get_engine().url.render_as_string(hide_password=False).replace(
-            '%', '%%')
-    except AttributeError:
-        return str(get_engine().url).replace('%', '%%')
+    def get_engine():
+        try:
+            # Flask-SQLAlchemy<3 e Alchemical
+            return current_app.extensions['migrate'].db.get_engine()
+        except (TypeError, AttributeError):
+            # Flask-SQLAlchemy>=3
+            return current_app.extensions['migrate'].db.engine
 
+else:
+    import sys
+    from sqlalchemy import create_engine
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-config.set_main_option('sqlalchemy.url', get_engine_url())
-target_db = current_app.extensions['migrate'].db
+    # Adiciona o diretório src ao sys.path
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+    # Importe todos os models do src.models
+    from models import auditoria, documento, endividamento, fazenda, notificacao_endividamento, pessoa, usuario
+    from models.db import Base
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+    def get_metadata():
+        return Base.metadata
 
+    def get_engine():
+        url = config.get_main_option('sqlalchemy.url')
+        return create_engine(url)
 
-def get_metadata():
-    if hasattr(target_db, 'metadatas'):
-        return target_db.metadatas[None]
-    return target_db.metadata
-
+# --------------------------------------------------
 
 def run_migrations_offline():
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
+    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url, target_metadata=get_metadata(), literal_binds=True
+        url=url,
+        target_metadata=get_metadata(),
+        literal_binds=True
     )
 
     with context.begin_transaction():
@@ -73,26 +74,15 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-
-    # this callback is used to prevent an auto-migration from being generated
-    # when there are no changes to the schema
-    # reference: http://alembic.zzzcomputing.com/en/latest/cookbook.html
+    """Run migrations in 'online' mode."""
     def process_revision_directives(context, revision, directives):
-        if getattr(config.cmd_opts, 'autogenerate', False):
-            script = directives[0]
-            if script.upgrade_ops.is_empty():
-                directives[:] = []
-                logger.info('No changes in schema detected.')
-
-    conf_args = current_app.extensions['migrate'].configure_args
-    if conf_args.get("process_revision_directives") is None:
-        conf_args["process_revision_directives"] = process_revision_directives
+        if flask_app:
+            conf_args = current_app.extensions['migrate'].configure_args
+            if conf_args.get("process_revision_directives") is None:
+                conf_args["process_revision_directives"] = process_revision_directives
+            return conf_args
+        else:
+            return {}
 
     connectable = get_engine()
 
@@ -100,7 +90,7 @@ def run_migrations_online():
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
-            **conf_args
+            **(current_app.extensions['migrate'].configure_args if flask_app else {})
         )
 
         with context.begin_transaction():

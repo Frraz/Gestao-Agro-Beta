@@ -1,26 +1,53 @@
 # /src/models/endividamento.py
 
-# Modelo para Endividamento
+"""
+Modelos relacionados ao endividamento, incluindo endividamento principal, vínculo com fazenda e parcelas.
 
-from src.models.db import db
-from datetime import datetime
+Inclui:
+- Endividamento: Operação financeira atrelada a pessoas e fazendas, com parcelas e notificações.
+- EndividamentoFazenda: Associação entre endividamento e fazenda.
+- Parcela: Detalhes de cada parcela do endividamento.
+"""
 
-class Endividamento(db.Model):
+from models.db import db
+from datetime import datetime, date
+from typing import Optional, List
+
+class Endividamento(db.Model):  # type: ignore
+    """
+    Modelo para operações de endividamento.
+
+    Attributes:
+        id (int): Identificador do endividamento.
+        banco (str): Nome do banco credor.
+        numero_proposta (str): Número da proposta.
+        data_emissao (date): Data de emissão do contrato.
+        data_vencimento_final (date): Data final do vencimento.
+        taxa_juros (float): Taxa de juros da operação.
+        tipo_taxa_juros (str): Tipo de taxa de juros ('ano' ou 'mes').
+        prazo_carencia (Optional[int]): Prazo de carência em meses.
+        valor_operacao (Optional[float]): Valor total da operação.
+        created_at (datetime): Data de criação do registro.
+        updated_at (datetime): Data da última atualização.
+        pessoas (List[Pessoa]): Pessoas associadas.
+        fazenda_vinculos (List[EndividamentoFazenda]): Vínculos com fazendas.
+        parcelas (List[Parcela]): Parcelas do endividamento.
+        notificacoes (List[NotificacaoEndividamento]): Notificações associadas.
+    """
     __tablename__ = 'endividamento'
     
-    id = db.Column(db.Integer, primary_key=True)
-    banco = db.Column(db.String(255), nullable=False)
-    numero_proposta = db.Column(db.String(255), nullable=False)
-    data_emissao = db.Column(db.Date, nullable=False)
-    data_vencimento_final = db.Column(db.Date, nullable=False)
-    taxa_juros = db.Column(db.Numeric(10, 4), nullable=False)
-    tipo_taxa_juros = db.Column(db.String(10), nullable=False)  # 'ano' ou 'mes'
-    prazo_carencia = db.Column(db.Integer, nullable=True)  # em meses
-    valor_operacao = db.Column(db.Numeric(15, 2), nullable=True)  # valor total da operação
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id: int = db.Column(db.Integer, primary_key=True)
+    banco: str = db.Column(db.String(255), nullable=False)
+    numero_proposta: str = db.Column(db.String(255), nullable=False)
+    data_emissao: date = db.Column(db.Date, nullable=False)
+    data_vencimento_final: date = db.Column(db.Date, nullable=False)
+    taxa_juros: float = db.Column(db.Numeric(10, 4), nullable=False)
+    tipo_taxa_juros: str = db.Column(db.String(10), nullable=False)  # 'ano' ou 'mes'
+    prazo_carencia: Optional[int] = db.Column(db.Integer, nullable=True)  # em meses
+    valor_operacao: Optional[float] = db.Column(db.Numeric(15, 2), nullable=True)  # valor total da operação
+    created_at: datetime = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at: datetime = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relacionamentos
     pessoas = db.relationship(
         'Pessoa',
         secondary='endividamento_pessoa',
@@ -43,10 +70,10 @@ class Endividamento(db.Model):
         cascade="all, delete-orphan"
     )
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<Endividamento {self.banco} - {self.numero_proposta}>'
     
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'id': self.id,
             'banco': self.banco,
@@ -68,24 +95,36 @@ endividamento_pessoa = db.Table(
     db.Column('pessoa_id', db.Integer, db.ForeignKey('pessoa.id'), primary_key=True)
 )
 
-class EndividamentoFazenda(db.Model):
+class EndividamentoFazenda(db.Model):  # type: ignore
+    """
+    Associação entre endividamento e fazenda.
+
+    Attributes:
+        id (int): Identificador.
+        endividamento_id (int): ID do endividamento.
+        fazenda_id (Optional[int]): ID da fazenda.
+        hectares (Optional[float]): Quantidade de hectares associados.
+        tipo (str): Tipo do vínculo ('objeto_credito' ou 'garantia').
+        descricao (Optional[str]): Descrição adicional.
+        endividamento (Endividamento): Relação com o endividamento.
+        fazenda (Fazenda): Relação com a fazenda.
+    """
     __tablename__ = 'endividamento_fazenda'
     
-    id = db.Column(db.Integer, primary_key=True)
-    endividamento_id = db.Column(db.Integer, db.ForeignKey('endividamento.id'), nullable=False)
-    fazenda_id = db.Column(db.Integer, db.ForeignKey('fazenda.id'), nullable=True)
-    hectares = db.Column(db.Numeric(10, 2), nullable=True)
-    tipo = db.Column(db.String(50), nullable=False)  # 'objeto_credito' ou 'garantia'
-    descricao = db.Column(db.Text, nullable=True)
+    id: int = db.Column(db.Integer, primary_key=True)
+    endividamento_id: int = db.Column(db.Integer, db.ForeignKey('endividamento.id'), nullable=False)
+    fazenda_id: Optional[int] = db.Column(db.Integer, db.ForeignKey('fazenda.id'), nullable=True)
+    hectares: Optional[float] = db.Column(db.Numeric(10, 2), nullable=True)
+    tipo: str = db.Column(db.String(50), nullable=False)  # 'objeto_credito' ou 'garantia'
+    descricao: Optional[str] = db.Column(db.Text, nullable=True)
     
-    # Relacionamentos
     endividamento = db.relationship('Endividamento', back_populates='fazenda_vinculos')
     fazenda = db.relationship('Fazenda')
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<EndividamentoFazenda {self.tipo} - {self.fazenda.nome if self.fazenda else "Descrição livre"}>'
     
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'id': self.id,
             'endividamento_id': self.endividamento_id,
@@ -96,25 +135,38 @@ class EndividamentoFazenda(db.Model):
             'descricao': self.descricao
         }
 
-class Parcela(db.Model):
+class Parcela(db.Model):  # type: ignore
+    """
+    Modelo para parcelas de endividamento.
+
+    Attributes:
+        id (int): Identificador da parcela.
+        endividamento_id (int): ID do endividamento principal.
+        data_vencimento (date): Data de vencimento da parcela.
+        valor (float): Valor da parcela.
+        pago (bool): Se a parcela foi paga.
+        data_pagamento (Optional[date]): Data em que foi paga.
+        valor_pago (Optional[float]): Valor pago na parcela.
+        observacoes (Optional[str]): Observações sobre a parcela.
+        endividamento (Endividamento): Relação com o endividamento.
+    """
     __tablename__ = 'parcela'
     
-    id = db.Column(db.Integer, primary_key=True)
-    endividamento_id = db.Column(db.Integer, db.ForeignKey('endividamento.id'), nullable=False)
-    data_vencimento = db.Column(db.Date, nullable=False)
-    valor = db.Column(db.Numeric(10, 2), nullable=False)
-    pago = db.Column(db.Boolean, default=False)
-    data_pagamento = db.Column(db.Date, nullable=True)
-    valor_pago = db.Column(db.Numeric(10, 2), nullable=True)
-    observacoes = db.Column(db.Text, nullable=True)
+    id: int = db.Column(db.Integer, primary_key=True)
+    endividamento_id: int = db.Column(db.Integer, db.ForeignKey('endividamento.id'), nullable=False)
+    data_vencimento: date = db.Column(db.Date, nullable=False)
+    valor: float = db.Column(db.Numeric(10, 2), nullable=False)
+    pago: bool = db.Column(db.Boolean, default=False)
+    data_pagamento: Optional[date] = db.Column(db.Date, nullable=True)
+    valor_pago: Optional[float] = db.Column(db.Numeric(10, 2), nullable=True)
+    observacoes: Optional[str] = db.Column(db.Text, nullable=True)
     
-    # Relacionamentos
     endividamento = db.relationship('Endividamento', back_populates='parcelas')
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<Parcela {self.data_vencimento} - R$ {self.valor}>'
     
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'id': self.id,
             'endividamento_id': self.endividamento_id,

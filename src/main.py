@@ -75,29 +75,8 @@ def create_app(test_config=None):
     def load_user(user_id):
         return Usuario.query.get(int(user_id))
 
-    # UPLOAD_FOLDER e tamanho máximo configurados via config.py, mas aqui garantimos fallback
-    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
-    app.config['UPLOAD_FOLDER'] = app.config.get('UPLOAD_FOLDER', UPLOAD_FOLDER)
-    app.config['MAX_CONTENT_LENGTH'] = app.config.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024)  # 16MB
-
-    # Banco de dados: permite sobrescrever para testes ou outros ambientes
-    if not test_config:
-        db_url = app.config.get('SQLALCHEMY_DATABASE_URI') or os.environ.get('DATABASE_URL')
-        if db_url:
-            if db_url.startswith("mysql://"):
-                db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
-            app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-        elif os.environ.get('DB_TYPE') == 'mysql':
-            app.config['SQLALCHEMY_DATABASE_URI'] = (
-                f"mysql+pymysql://{os.getenv('DB_USERNAME', 'root')}:"
-                f"{os.getenv('DB_PASSWORD', 'password')}@"
-                f"{os.getenv('DB_HOST', 'localhost')}:"
-                f"{os.getenv('DB_PORT', '3306')}/"
-                f"{os.getenv('DB_NAME', 'gestao_fazendas')}"
-            )
-        else:
-            app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.path.dirname(os.path.dirname(__file__)), 'gestao_fazendas.db')
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    # UPLOAD_FOLDER e MAX_CONTENT_LENGTH já estão em config.py, apenas garanta que o diretório exista
+    os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'documentos'), exist_ok=True)
 
     configure_logging(app)
 
@@ -107,8 +86,6 @@ def create_app(test_config=None):
 
     init_performance_optimizations(app)
     PerformanceMiddleware(app)
-
-    os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'documentos'), exist_ok=True)
 
     app.register_blueprint(admin_bp)
     app.register_blueprint(pessoa_bp)
@@ -126,7 +103,7 @@ def create_app(test_config=None):
     @app.errorhandler(413)
     def request_entity_too_large(error):
         app.logger.warning(f'Tentativa de upload de arquivo muito grande: {request.url}')
-        flash(f'O arquivo é muito grande. O tamanho máximo permitido é {app.config["MAX_CONTENT_LENGTH"] / (1024 * 1024)}MB.', 'danger')
+        flash(f'O arquivo é muito grande. O tamanho máximo permitido é {app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)}MB.', 'danger')
         return redirect(request.url)
 
     @app.errorhandler(400)
