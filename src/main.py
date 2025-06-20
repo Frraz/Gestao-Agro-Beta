@@ -27,7 +27,11 @@ from flask_login import LoginManager
 from src.utils.filters import register_filters
 from src.routes.test import test_bp
 from dotenv import load_dotenv
+
+# Carrega variáveis de ambiente
 load_dotenv()
+
+from src.config import config_by_name
 
 def configure_logging(app):
     if not os.path.exists('logs'):
@@ -49,10 +53,18 @@ def allowed_file(filename):
 def create_app(test_config=None):
     app = Flask(__name__)
 
+    # Configuração centralizada
+    config_name = os.getenv("FLASK_ENV", "development")
+    app.config.from_object(config_by_name[config_name])
+
+    if test_config:
+        app.config.update(test_config)
+
     register_filters(app)
 
-    print("MAIL_USERNAME:", os.environ.get('MAIL_USERNAME'))
-    print("MAIL_DEFAULT_SENDER:", os.environ.get('MAIL_DEFAULT_SENDER'))
+    # Debug de variáveis de e-mail (útil para troubleshooting)
+    print("MAIL_USERNAME:", app.config.get('MAIL_USERNAME'))
+    print("MAIL_DEFAULT_SENDER:", app.config.get('MAIL_DEFAULT_SENDER'))
     
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -63,14 +75,14 @@ def create_app(test_config=None):
     def load_user(user_id):
         return Usuario.query.get(int(user_id))
 
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.urandom(24)
+    # UPLOAD_FOLDER e tamanho máximo configurados via config.py, mas aqui garantimos fallback
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
-    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+    app.config['UPLOAD_FOLDER'] = app.config.get('UPLOAD_FOLDER', UPLOAD_FOLDER)
+    app.config['MAX_CONTENT_LENGTH'] = app.config.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024)  # 16MB
 
-    # Configuração do banco de dados
-    if test_config is None:
-        db_url = os.environ.get('DATABASE_URL')
+    # Banco de dados: permite sobrescrever para testes ou outros ambientes
+    if not test_config:
+        db_url = app.config.get('SQLALCHEMY_DATABASE_URI') or os.environ.get('DATABASE_URL')
         if db_url:
             if db_url.startswith("mysql://"):
                 db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
@@ -85,17 +97,7 @@ def create_app(test_config=None):
             )
         else:
             app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.path.dirname(os.path.dirname(__file__)), 'gestao_fazendas.db')
-    else:
-        app.config.update(test_config)
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-    app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-    app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
-    app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
-    app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
-    app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
-    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@gestaofazendas.com.br')
-    app.config['REDIS_URL'] = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
     configure_logging(app)
 

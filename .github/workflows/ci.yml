@@ -24,6 +24,13 @@ jobs:
           source venv/bin/activate
           pip install -r requirements.txt
           pip install pytest pytest-cov
+          pip install flake8 black isort
+
+      - name: Check code style
+        run: |
+          flake8 src/
+          black --check src/
+          isort --check src/
 
       - name: Run tests
         run: |
